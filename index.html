@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador UC11 Aprendizagem</title>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+html{color-scheme:light}body{margin:0}
+/* Layout: abas Capa / Jornada / Relatório; fases em cartões com cadeado; cena = palco com personagens + legenda + decisão */
+:root{
+  --bg:#EEF3FA; --surface:#FFFFFF; --ink:#14233B; --muted:#5A6B85; --line:#D3DDEC;
+  --blue:#004A8D; --blue-soft:#DCE9F7; --orange:#F7941D; --orange-ink:#8A4B00; --orange-soft:#FFEBD0;
+  --good:#1E8E5A; --good-soft:#D9F2E5; --bad:#C2410C; --bad-soft:#FFE3D6;
+  --stage-a:#BFD9F5; --stage-b:#8FB7E3; --hdr:#004A8D; --hdr-ink:#FFFFFF;
+  --f-display:'Baloo 2','Trebuchet MS',system-ui,sans-serif; --f-body:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1726; --surface:#16233A; --ink:#E7EEF9; --muted:#9FB0CB; --line:#2A3B58;
+  --blue:#6FB0F2; --blue-soft:#1C3354; --orange:#FFA94D; --orange-ink:#FFD7A3; --orange-soft:#3A2A14;
+  --good:#52D49A; --good-soft:#12362A; --bad:#FF9A70; --bad-soft:#3F2116;
+  --stage-a:#25456E; --stage-b:#1A3354; --hdr:#0A1D36; --hdr-ink:#E7EEF9; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1726; --surface:#16233A; --ink:#E7EEF9; --muted:#9FB0CB; --line:#2A3B58;
+  --blue:#6FB0F2; --blue-soft:#1C3354; --orange:#FFA94D; --orange-ink:#FFD7A3; --orange-soft:#3A2A14;
+  --good:#52D49A; --good-soft:#12362A; --bad:#FF9A70; --bad-soft:#3F2116;
+  --stage-a:#25456E; --stage-b:#1A3354; --hdr:#0A1D36; --hdr-ink:#E7EEF9; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;margin:0;text-wrap:balance}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.wrap{max-width:900px;margin:0 auto}
+nav.tabs{display:flex;gap:8px;padding-block:14px;flex-wrap:wrap;align-items:center}
+.tab{border:2px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 18px;border-radius:999px;font-weight:800}
+.tab[aria-selected="true"]{background:var(--hdr);border-color:var(--orange);color:var(--hdr-ink)}
+.who{margin-left:auto;color:var(--muted);font-weight:700;font-size:15px}
+.btn{background:var(--orange);color:#1b1100;border:0;border-radius:12px;padding:12px 22px;font-weight:800;font-size:17px;box-shadow:0 3px 0 rgba(0,0,0,.2)}
+.btn:hover{filter:brightness(1.06)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line);box-shadow:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+/* capa */
+.cover{background:linear-gradient(160deg,var(--hdr),#0B6FB8);color:#fff;border-radius:22px;padding:28px 24px 0;overflow:hidden;position:relative}
+.cover .eyebrow{font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:13px;color:#FFC983}
+.cover h1{font-size:clamp(26px,5.2vw,42px);margin:8px 0 12px;font-weight:800}
+.cover p.cred{margin:0 0 18px;font-size:16px;color:#DCEBFA;max-width:60ch}
+.lineup{display:flex;justify-content:center;gap:clamp(0px,1.5vw,14px);align-items:flex-end;margin-top:10px}
+.lineup svg{width:clamp(62px,15vw,120px);height:auto}
+.start{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.start input{flex:1 1 220px;min-width:0;padding:12px 14px;border-radius:12px;border:2px solid transparent;font:inherit;font-weight:700;background:#fff;color:#14233B}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:16px}
+.grid3 .card h3{font-size:20px;color:var(--blue);margin-bottom:6px}
+.grid3 .card p{margin:0;color:var(--muted);font-size:15.5px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-display);color:var(--blue);font-size:16px}
+/* mapa de fases */
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:14px}
+.ph{display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:18px;color:var(--ink);min-width:0}
+.ph .n{font-family:var(--f-display);font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ph h3{font-size:21px}
+.ph p{margin:0;font-size:15px;color:var(--muted)}
+.ph .st{margin-top:auto;font-weight:800;font-size:14.5px}
+.ph.open{border-color:var(--orange)}.ph.open:hover{transform:translateY(-2px)}
+.ph.done{border-color:var(--good)}.ph.done .st{color:var(--good)}
+.ph.lock{opacity:.6;cursor:not-allowed}
+.ph.bonus{border-style:dashed}
+/* cena */
+.stage{position:relative;height:clamp(190px,34vw,250px);border-radius:18px 18px 0 0;overflow:hidden;background:linear-gradient(var(--stage-a),var(--stage-b))}
+.stage .bd{position:absolute;inset:0;width:100%;height:100%}
+.stage .c{position:absolute;bottom:-4px;height:88%}
+.stage .c svg{height:100%;width:auto;display:block;filter:drop-shadow(0 4px 0 rgba(0,0,0,.12))}
+.stage .l{left:5%}.stage .r{right:5%}
+.talk svg{animation:bob .6s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-6px)}}
+.eyes{animation:blink 4.5s infinite;transform-origin:60px 62px}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@media (prefers-reduced-motion:reduce){.talk svg,.eyes{animation:none}}
+.place{position:absolute;top:10px;left:12px;background:rgba(0,0,0,.55);color:#fff;font-weight:800;font-size:13px;padding:4px 10px;border-radius:999px}
+.cap{background:#0c0c0c;color:#fff;padding:14px 18px;min-height:78px;font-size:18px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.cap .tx{flex:1 1 260px;min-width:0}
+.cap b{color:#FFD66B}
+.cap button{background:#fff;color:#0c0c0c;border:0;border-radius:10px;padding:8px 14px;font-weight:800}
+.q{background:var(--surface);border:1px solid var(--line);border-top:0;border-radius:0 0 18px 18px;padding:20px}
+.q h3{font-size:22px;margin-bottom:12px}
+.opts{display:grid;gap:10px}
+.opt{display:block;width:100%;text-align:left;background:var(--bg);border:2px solid var(--line);color:var(--ink);padding:14px 16px;border-radius:14px;font-weight:600}
+.opt:hover:not(:disabled){border-color:var(--blue)}
+.opt.sel3,.opt.sel2{border-color:var(--good);background:var(--good-soft)}
+.opt.sel1,.opt.sel0{border-color:var(--bad);background:var(--bad-soft)}
+.opt:disabled{cursor:default}
+.fb{margin-top:14px;padding:14px 16px;border-radius:14px;font-weight:600}
+.fb.g{background:var(--good-soft)}.fb.b{background:var(--bad-soft)}
+.fb .pts{font-family:var(--f-display);font-weight:800;font-size:19px;display:block;margin-bottom:2px}
+.bar{height:12px;background:var(--line);border-radius:999px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--orange);border-radius:999px;transition:width .4s}
+.bar.big{height:14px}
+.top{display:flex;gap:14px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.top .t{font-family:var(--f-display);font-weight:800;font-size:20px;flex:1 1 200px;min-width:0}
+.top .bar{flex:1 1 140px}
+.score{font-family:var(--f-display);font-size:56px;font-weight:800;color:var(--blue);line-height:1}
+textarea{width:100%;min-height:110px;padding:12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+/* relatório */
+.rep h2{font-size:26px;margin-bottom:4px}
+.rep .sec{margin-top:18px}
+.rep .sec h3{font-size:21px;color:var(--blue);margin-bottom:8px}
+.m{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:4px 12px;align-items:center;margin-bottom:10px}
+.m .nm{font-weight:700}.m .lv{font-weight:800;font-size:14px;text-align:right;color:var(--muted)}
+.m .bar{grid-column:1/-1}
+.concept{display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:var(--blue-soft);border-radius:16px;padding:18px}
+.concept .big{font-family:var(--f-display);font-weight:800;font-size:32px;color:var(--blue)}
+.pill{display:inline-block;background:var(--orange-soft);color:var(--orange-ink);border-radius:999px;padding:3px 12px;font-weight:800;font-size:14px}
+.refl{background:var(--bg);border-left:5px solid var(--orange);padding:10px 14px;border-radius:8px;margin:6px 0;white-space:pre-wrap}
+.note{font-size:14.5px;color:var(--muted)}
+footer{margin-top:28px;text-align:center;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <nav class="tabs" role="tablist" aria-label="Seções do simulador">
+    <button class="tab" role="tab" id="t-capa" data-v="capa">Capa</button>
+    <button class="tab" role="tab" id="t-jornada" data-v="jornada">Jornada</button>
+    <button class="tab" role="tab" id="t-rel" data-v="rel">Relatório</button>
+    <span class="who" id="who"></span>
+  </nav>
+  <main id="main"></main>
+  <footer>Senac CEP Jataí/GO · UC11 · Projeto Aprendizagem</footer>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- Personagens (desenho próprio, SVG) ---------- */
+const CH={
+ lia:{n:'Lia',skin:'#C98A5B',hair:'#2B1B14',style:'curly',shirt:'#F7941D'},
+ bia:{n:'Bia (mentora)',skin:'#E8B48C',hair:'#7A2E1E',style:'bun',shirt:'#0C7C8C',acc:'glasses'},
+ tiao:{n:'Seu Tião (gerente)',skin:'#D9A072',hair:'#9AA0A6',style:'bald',shirt:'#2F5D9E',acc:'mustache'},
+ theo:{n:'Theo (colega)',skin:'#B97A56',hair:'#1B1B1B',style:'short',shirt:'#7B4FBF',acc:'phones'},
+ rosa:{n:'Dona Rosa (instituição)',skin:'#A86B48',hair:'#777777',style:'curly',shirt:'#2E9E5B'}
+};
+function char(k,mood){
+ const c=CH[k],m=mood||'n';
+ let hair='';
+ if(c.style==='curly')hair=[[34,44,13],[46,30,15],[64,26,16],[82,32,15],[90,50,11],[28,58,9]].map(a=>`<circle cx="${a[0]}" cy="${a[1]}" r="${a[2]}" fill="${c.hair}"/>`).join('');
+ if(c.style==='short'||c.style==='bun')hair=`<path d="M26 58 Q22 20 60 20 Q98 20 94 58 Q84 38 60 38 Q36 38 26 58Z" fill="${c.hair}"/>`+(c.style==='bun'?`<circle cx="60" cy="14" r="12" fill="${c.hair}"/>`:'');
+ if(c.style==='bald')hair=`<ellipse cx="27" cy="62" rx="7" ry="13" fill="${c.hair}"/><ellipse cx="93" cy="62" rx="7" ry="13" fill="${c.hair}"/>`;
+ const mouth={h:'M46 80 Q60 96 74 80Z',n:'M50 84 Q60 88 70 84',w:'M48 90 Q60 78 72 90'}[m==='h'||m==='g'?'h':m==='w'||m==='b'?'w':'n'];
+ const mf=(m==='h'||m==='g')?'#fff':'none';
+ const brow=(m==='w'||m==='b')?'M38 50 L55 45 M82 50 L65 45':'M38 47 Q47 43 55 47 M65 47 Q73 43 82 47';
+ let acc='';
+ if(c.acc==='glasses')acc=`<g fill="none" stroke="#222" stroke-width="3"><circle cx="47" cy="62" r="11"/><circle cx="73" cy="62" r="11"/><path d="M58 62h4"/></g>`;
+ if(c.acc==='mustache')acc=`<path d="M42 78 Q52 68 60 75 Q68 68 78 78 Q68 83 60 79 Q52 83 42 78Z" fill="#6b6f74"/>`;
+ if(c.acc==='phones')acc=`<path d="M24 62 Q22 12 60 12 Q98 12 96 62" fill="none" stroke="#222" stroke-width="6"/><rect x="17" y="54" width="12" height="24" rx="5" fill="#222"/><rect x="91" y="54" width="12" height="24" rx="5" fill="#222"/>`;
+ return `<svg viewBox="0 0 120 150" role="img" aria-label="${esc(c.n)}"><path d="M14 150 Q14 108 60 106 Q106 108 106 150Z" fill="${c.shirt}"/><rect x="50" y="90" width="20" height="20" fill="${c.skin}"/><ellipse cx="60" cy="60" rx="34" ry="36" fill="${c.skin}"/>${hair}<g class="eyes"><circle cx="47" cy="62" r="5.5" fill="#1b1b1b"/><circle cx="73" cy="62" r="5.5" fill="#1b1b1b"/><circle cx="48.8" cy="60.2" r="1.8" fill="#fff"/><circle cx="74.8" cy="60.2" r="1.8" fill="#fff"/></g><path d="${brow}" stroke="${c.style==='bald'?'#6b6f74':c.hair}" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="36" cy="74" r="6" fill="#ff7a8a" opacity=".3"/><circle cx="84" cy="74" r="6" fill="#ff7a8a" opacity=".3"/><path d="${mouth}" fill="${mf}" stroke="#4a1f1f" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${acc}</svg>`;
+}
+/* ---------- Cenários ---------- */
+const BD={
+ 1:`<svg class="bd" viewBox="0 0 600 250" preserveAspectRatio="xMidYMax slice"><rect y="180" width="600" height="70" fill="#9bb4d1"/><g fill="#6c8db5"><rect x="150" y="40" width="300" height="12" rx="3"/><rect x="150" y="95" width="300" height="12" rx="3"/><rect x="150" y="150" width="300" height="12" rx="3"/></g><g><rect x="165" y="14" width="34" height="26" fill="#F7941D"/><rect x="205" y="20" width="30" height="20" fill="#2E9E5B"/><rect x="330" y="16" width="40" height="24" fill="#E4572E"/><rect x="180" y="68" width="40" height="27" fill="#FFC857"/><rect x="380" y="70" width="36" height="25" fill="#17BEBB"/><rect x="250" y="122" width="44" height="28" fill="#F7941D"/><rect x="340" y="124" width="36" height="26" fill="#7B4FBF"/></g><rect x="440" y="170" width="140" height="40" rx="6" fill="#004A8D"/><rect x="470" y="150" width="50" height="22" rx="3" fill="#ddd"/></svg>`,
+ 2:`<svg class="bd" viewBox="0 0 600 250" preserveAspectRatio="xMidYMax slice"><rect y="190" width="600" height="60" fill="#9bb4d1"/><rect x="140" y="50" width="130" height="90" rx="8" fill="#14233B"/><rect x="150" y="60" width="110" height="70" fill="#4aa3ff"/><rect x="330" y="50" width="130" height="90" rx="8" fill="#14233B"/><rect x="340" y="60" width="110" height="70" fill="#FFC857"/><rect x="190" y="140" width="30" height="20" fill="#14233B"/><rect x="380" y="140" width="30" height="20" fill="#14233B"/><g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".8"><path d="M285 40 Q300 25 315 40"/><path d="M276 30 Q300 6 324 30"/></g><circle cx="300" cy="50" r="4" fill="#fff"/></svg>`,
+ 3:`<svg class="bd" viewBox="0 0 600 250" preserveAspectRatio="xMidYMax slice"><circle cx="520" cy="46" r="26" fill="#FFD66B"/><rect y="195" width="600" height="55" fill="#7fb98f"/><g><rect x="150" y="150" width="60" height="50" fill="#D9A55B"/><rect x="215" y="160" width="55" height="40" fill="#C98F43"/><rect x="170" y="112" width="50" height="40" fill="#E6B873"/><rect x="330" y="150" width="70" height="50" fill="#D9A55B"/><rect x="405" y="165" width="50" height="35" fill="#C98F43"/></g><rect x="200" y="20" width="200" height="44" rx="8" fill="#2E9E5B"/><text x="300" y="49" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="19" fill="#fff">CAMPANHA SOLIDÁRIA</text></svg>`,
+ 4:`<svg class="bd" viewBox="0 0 600 250" preserveAspectRatio="xMidYMax slice"><rect y="195" width="600" height="55" fill="#9bb4d1"/><rect x="120" y="20" width="360" height="150" rx="8" fill="#fff"/><g><rect x="140" y="40" width="70" height="50" fill="#FFC857"/><rect x="225" y="40" width="70" height="50" fill="#F7941D"/><rect x="310" y="40" width="70" height="50" fill="#17BEBB"/><rect x="395" y="40" width="70" height="50" fill="#9BD18B"/><rect x="140" y="104" width="160" height="12" rx="4" fill="#bcc8da"/><rect x="140" y="126" width="260" height="12" rx="4" fill="#bcc8da"/></g></svg>`,
+ 5:`<svg class="bd" viewBox="0 0 600 250" preserveAspectRatio="xMidYMax slice"><rect y="195" width="600" height="55" fill="#9bb4d1"/><path d="M300 30 l14 30 33 4-24 22 6 33-29-17-29 17 6-33-24-22 33-4z" fill="#FFC857" stroke="#F7941D" stroke-width="4"/></svg>`
+};
+/* ---------- Conteúdo pedagógico (PCN 2023, UC11) ---------- */
+const IND={
+ 1:'Cumpre as atividades previstas no plano de ação, conforme desafio identificado no tema gerador.',
+ 2:'Apresenta resultados ou soluções de acordo com as problemáticas do tema gerador e objetivos do Projeto Aprendizagem.',
+ 3:'Mobiliza as marcas formativas na proposição de estratégias e soluções de acordo com o contexto e os desafios apresentados.'
+};
+const MARCA={vc:'Visão crítica',dt:'Domínio técnico-científico',pj:'Protagonismo juvenil, social e econômico',ad:'Autonomia digital',ce:'Criatividade e atitude empreendedora',co:'Colaboração e comunicação',as:'Atitude sustentável'};
+const HAB={an:'Analisar situações com visão crítica',de:'Tomar decisões fundamentadas',pl:'Planejar e organizar ações',di:'Usar recursos digitais com responsabilidade',cb:'Colaborar e mediar conflitos',cm:'Comunicar-se com clareza'};
+const PH=[
+ {id:1,t:'Quem sou eu no trabalho?',place:'Loja Boa Estrela',min:35,d:'Autoconhecimento, feedback e metas de carreira.'},
+ {id:2,t:'O mundo do trabalho está mudando',place:'Escritório digital',min:35,d:'Tendências, tecnologia e informações confiáveis.'},
+ {id:3,t:'Mobilização social em Jataí',place:'Instituição beneficente',min:40,d:'Escuta, conflito e campanha para a comunidade.'},
+ {id:4,t:'Meu Plano de Desenvolvimento',place:'Sala de planejamento',min:40,d:'Metas, imprevistos, portfólio e apresentação.'},
+ {id:5,t:'Desafio Aprendiz Destaque',place:'Fase bônus',min:20,d:'Dilemas difíceis para quem terminou antes.',bonus:true}
+];
+const O=(t,p,f)=>({t,p,f});
+const S=[
+{id:'1.1',ph:1,npc:'bia',mood:'h',ind:3,marca:'vc',hab:'an',
+ lines:[['bia','Bem-vinda à Loja Boa Estrela, Lia! Eu sou a Bia, sua mentora. Antes de começarmos, me conta: o que você faz bem e o que ainda quer melhorar?']],
+ q:'Como a Lia deve responder à Bia?',
+ opts:[O('Cito dois pontos fortes com exemplos reais e um ponto a melhorar, com uma ideia de como desenvolver.',3,'Autoavaliação com exemplos e plano mostra visão crítica sobre si mesma.'),
+  O('Digo que sou boa em tudo e não tenho nada a melhorar.',1,'Sem enxergar pontos de melhoria, fica difícil traçar um plano de desenvolvimento.'),
+  O('Respondo "não sei, qualquer coisa serve".',0,'Sem se conhecer, a Lia não consegue escolher um caminho. Autoconhecimento é o ponto de partida.')]},
+{id:'1.2',ph:1,npc:'tiao',mood:'w',ind:1,marca:'dt',hab:'de',
+ lines:[['tiao','Lia, o caixa fechou com diferença de R$ 20 ontem. Foi no seu turno.'],['lia','Poxa... eu me confundi no troco de um cliente.']],
+ q:'Qual a melhor atitude da Lia?',
+ opts:[O('Assumo o erro, peço para revisarmos a venda e passo a conferir o troco em voz alta com o cliente.',3,'Assumir, corrigir e criar uma rotina de conferência é atitude profissional e técnica.'),
+  O('Digo que o cliente me confundiu de propósito.',1,'Culpar o outro não resolve e prejudica a confiança da equipe.'),
+  O('Fico quieta e espero que ninguém perceba.',0,'Esconder falhas aumenta o prejuízo e quebra a confiança.')]},
+{id:'1.3',ph:1,npc:'theo',mood:'n',ind:1,marca:'pj',hab:'pl',
+ lines:[['theo','Abriram duas vagas: um curso de Excel e uma oficina de redes sociais. Você só tem 4 horas livres por semana, né?'],['lia','Isso mesmo. Minha meta é trabalhar com atendimento e vendas.']],
+ q:'Como a Lia decide o uso das 4 horas?',
+ opts:[O('Escolho o curso que mais ajuda minha meta de carreira e marco os horários na agenda.',3,'Escolher com critério e agendar transforma intenção em ação.'),
+  O('Tento fazer os dois ao mesmo tempo, mesmo sem tempo.',2,'Ambição é boa, mas sem priorizar o risco é não concluir nenhum.'),
+  O('Deixo para decidir depois, quando sobrar tempo.',0,'Sem decisão e sem agenda, a oportunidade passa.')]},
+{id:'1.4',ph:1,npc:'bia',mood:'h',ind:2,marca:'pj',hab:'pl',
+ lines:[['bia','Última pergunta da semana: onde você quer estar daqui a 3 anos?']],
+ q:'Qual resposta mostra mais protagonismo?',
+ opts:[O('Quero ser vendedora efetiva. Vou concluir a aprendizagem, fazer curso de vendas até junho e pedir feedback a cada mês.',3,'Meta específica, com prazo e primeiro passo, é uma meta que se pode acompanhar.'),
+  O('Quero ser bem-sucedida na vida.',2,'É um desejo legítimo, mas ainda amplo demais para virar plano.'),
+  O('Vou ver o que aparece.',0,'Protagonismo é construir o caminho, não só esperar por ele.')]},
+
+{id:'2.1',ph:2,npc:'theo',mood:'w',ind:3,marca:'vc',hab:'an',
+ lines:[['theo','Vi uma notícia: chatbots com inteligência artificial vão atender clientes de várias lojas.'],['lia','Será que ainda vai ter emprego em atendimento?']],
+ q:'Como a Lia deve encarar a novidade?',
+ opts:[O('Aprendo a usar a ferramenta e invisto no que a máquina faz pior: empatia, negociação e resolução de problemas.',3,'Ver a tecnologia como aliada e reforçar competências humanas é visão crítica.'),
+  O('Ignoro, isso nunca vai chegar aqui.',1,'Ignorar tendências deixa o profissional despreparado.'),
+  O('Desisto da área, não tem futuro.',0,'Decidir por medo, sem analisar o cenário, fecha portas sem necessidade.')]},
+{id:'2.2',ph:2,npc:'tiao',mood:'h',ind:3,marca:'ad',hab:'di',
+ lines:[['tiao','Lia, você que entende de rede social: poste a promoção da semana. Tenho uma foto de uma cliente comprando.']],
+ q:'O que a Lia faz?',
+ opts:[O('Posto no perfil oficial da loja, com imagens dos produtos, e só uso a foto da cliente se ela autorizar por escrito.',3,'Canal oficial e autorização de imagem respeitam a LGPD e a reputação da loja.'),
+  O('Posto rápido no meu perfil pessoal, sem revisar.',1,'Falta revisão e o canal não é o oficial da empresa.'),
+  O('Posto a foto da cliente com nome e telefone para vender mais.',0,'Expor dados pessoais sem autorização é infração e causa prejuízo à cliente e à loja.')]},
+{id:'2.3',ph:2,npc:'theo',mood:'h',ind:3,marca:'vc',hab:'di',
+ lines:[['theo','Olha esta mensagem: "Vaga garantida em grande empresa! Pague R$ 50 de taxa hoje."']],
+ q:'Qual a reação mais crítica?',
+ opts:[O('Desconfio de vaga paga, confiro o site oficial da empresa, não pago e aviso os colegas.',3,'Checar a fonte e alertar os colegas protege você e a turma.'),
+  O('Pago só R$ 50, é pouco.',1,'Golpes costumam começar com valores pequenos.'),
+  O('Pago e compartilho para todo mundo aproveitar.',0,'Além de perder dinheiro, você espalha o golpe.')]},
+{id:'2.4',ph:2,npc:'tiao',mood:'w',ind:2,marca:'ce',hab:'de',
+ lines:[['tiao','A fila do caixa está enorme no fim da tarde e os clientes reclamam.'],['lia','Tenho uma ideia, Seu Tião.']],
+ q:'Como a Lia apresenta a ideia?',
+ opts:[O('Observo o movimento por três dias, anoto os horários de pico e proponho um segundo caixa rápido nesse período, com custo baixo.',3,'Dados, solução viável e baixo custo mostram atitude empreendedora.'),
+  O('Proponho trocar todo o sistema da loja, sem números.',2,'A ideia ambiciosa precisa de dados para convencer.'),
+  O('Só reclamo da fila com os colegas.',0,'Reclamar sem propor não muda a situação.')]},
+
+{id:'3.1',ph:3,npc:'rosa',mood:'w',ind:1,marca:'co',hab:'an',
+ lines:[['rosa','O estoque de alimentos da nossa instituição está acabando. Muitas famílias de Jataí dependem das cestas.'],['lia','Quero ajudar, Dona Rosa. Por onde começo?']],
+ q:'Qual o primeiro passo da Lia na problematização?',
+ opts:[O('Converso com a instituição e com as famílias para saber a necessidade real, o que falta e quando.',3,'Entender o problema antes de agir evita esforço perdido.'),
+  O('Saio pedindo doações para todo mundo, sem combinar nada.',1,'Boa vontade sem planejamento pode gerar doações inadequadas.'),
+  O('Espero alguém organizar.',0,'Participação social começa por quem se levanta.')]},
+{id:'3.2',ph:3,npc:'theo',mood:'w',ind:3,marca:'co',hab:'cb',
+ lines:[['bia','Na reunião da turma, dois colegas falam sem parar e o Theo está calado.'],['lia','Acho que ele tem ideias, mas não se sente à vontade.']],
+ q:'O que a Lia propõe?',
+ opts:[O('Sugiro uma rodada em que cada um fala por 2 minutos, e um quadro onde todos escrevem ideias sem se identificar.',3,'Espaços de fala e escuta inclusiva são pedidos pelo PCN para decisões coletivas.'),
+  O('Sigo a opinião de quem fala mais.',1,'A voz mais alta nem sempre tem a melhor ideia.'),
+  O('Decido tudo sozinha para ganhar tempo.',0,'Decisão sem o grupo enfraquece o compromisso de todos.')]},
+{id:'3.3',ph:3,npc:'theo',mood:'w',ind:3,marca:'pj',hab:'cb',
+ lines:[['theo','Eu quero a caixa de coleta na entrada do mercado.'],['bia','Eu acho melhor na escola, tem mais gente passando.']],
+ q:'Como a Lia media o desacordo?',
+ opts:[O('Proponho critérios: fluxo de pessoas, segurança e autorização do local. Testamos os dois pontos por uma semana.',3,'Critérios claros e teste transformam disputa em decisão baseada em fatos.'),
+  O('Peço votação rápida, sem ninguém explicar suas razões.',1,'Votar sem ouvir os argumentos deixa o conflito mal resolvido.'),
+  O('Fico do lado do Theo porque ele é meu amigo.',0,'Mediar exige imparcialidade.')]},
+{id:'3.4',ph:3,npc:'rosa',mood:'h',ind:2,marca:'as',hab:'cm',
+ lines:[['rosa','Agora precisamos divulgar a campanha. Quem tem uma ideia?']],
+ q:'Qual divulgação é mais eficaz e sustentável?',
+ opts:[O('Cartaz digital com data, local e lista de itens aceitos, em linguagem simples. Imprimo poucas cópias em papel reciclado.',3,'Informação completa e uso consciente de recursos tornam a ação eficaz.'),
+  O('Mensagem genérica: "Doe alimentos!".',1,'Faltam local, data e o que doar.'),
+  O('Imprimo 500 cartazes coloridos sem plano de onde colar.',0,'Gera desperdício e pouco resultado.')]},
+
+{id:'4.1',ph:4,npc:'bia',mood:'h',ind:1,marca:'pj',hab:'pl',
+ lines:[['bia','Lia, você listou cinco metas para o seu Plano de Desenvolvimento. Como vai organizá-las?']],
+ q:'O que a Lia faz?',
+ opts:[O('Escolho duas ou três metas principais, defino prazo, recursos e o primeiro passo de cada uma.',3,'Foco e prazo tornam o plano realizável.'),
+  O('Mantenho as dez ideias, sem prazo.',1,'Sem prioridade e prazo, o plano vira lista de desejos.'),
+  O('Não registro nada, guardo na cabeça.',0,'O que não está registrado não pode ser acompanhado.')]},
+{id:'4.2',ph:4,npc:'bia',mood:'w',ind:1,marca:'dt',hab:'pl',
+ lines:[['lia','Fiquei doente e perdi dois dias do cronograma do projeto.'],['bia','Acontece. E agora?']],
+ q:'Qual a melhor atitude?',
+ opts:[O('Reviso o cronograma, aviso o grupo e o instrutor e ajusto prazos e tarefas para entregar com qualidade.',3,'Reorganizar e comunicar mantém o compromisso com o plano de ação.'),
+  O('Abandono essa etapa do projeto.',1,'Desistir da etapa compromete o resultado final.'),
+  O('Digo que cumpri tudo, mesmo sem ter feito.',0,'Falta de honestidade é grave no mundo do trabalho.')]},
+{id:'4.3',ph:4,npc:'bia',mood:'n',ind:3,marca:'ad',hab:'di',
+ lines:[['bia','Seu portfólio mostra o seu percurso. Como você vai guardar suas evidências?']],
+ q:'Qual forma é mais profissional?',
+ opts:[O('Crio uma pasta digital organizada, com certificados, fotos das ações e um texto curto de reflexão sobre cada uma.',3,'Evidências organizadas mostram resultados e aprendizado.'),
+  O('Deixo tudo solto na galeria do celular.',1,'Sem organização, é difícil comprovar o que você fez.'),
+  O('Não guardo nada, depois eu lembro.',0,'Sem evidências, a trajetória some.')]},
+{id:'4.4',ph:4,npc:'tiao',mood:'h',ind:2,marca:'co',hab:'cm',
+ lines:[['tiao','Na sexta, você apresenta seus resultados para a turma e para mim.']],
+ q:'Como a Lia se prepara?',
+ opts:[O('Mostro o que planejei, o que consegui com números, o que aprendi e os próximos passos, e peço feedback.',3,'Resultados, aprendizado e abertura ao feedback fecham o ciclo ação-reflexão-ação.'),
+  O('Falo só das dificuldades.',1,'Dificuldades importam, mas é preciso mostrar o que foi feito.'),
+  O('Leio os slides sem ter ensaiado.',0,'Sem preparo, a mensagem se perde.')]},
+
+{id:'5.1',ph:5,npc:'theo',mood:'w',ind:3,marca:'dt',hab:'de',
+ lines:[['theo','Lia, assina a lista de presença do projeto por mim? Eu cheguei atrasado e vou ser descontado.']],
+ q:'O que a Lia responde?',
+ opts:[O('Recuso, explico o risco e ajudo o Theo a conversar com o instrutor e a combinar como compensar.',3,'Ética e apoio caminham juntos: a Lia não falsifica e ainda ajuda.'),
+  O('Assino só desta vez.',0,'Falsificar assinatura é falta grave e prejudica os dois.'),
+  O('Recuso e deixo ele se virar.',1,'A recusa está certa, mas faltou colaboração.')]},
+{id:'5.2',ph:5,npc:'bia',mood:'n',ind:2,marca:'pj',hab:'de',
+ lines:[['bia','Apareceu uma proposta de emprego com salário maior, mas ela exigiria sair do programa de aprendizagem antes de concluir.']],
+ q:'Como a Lia decide?',
+ opts:[O('Listo prós e contras, converso com a família, o instrutor e o RH e decido pelos meus objetivos de médio prazo.',3,'Decisão informada e consultada protege seu futuro.'),
+  O('Aceito na hora, dinheiro é dinheiro.',1,'Pode ser boa escolha, mas sem análise é arriscada.'),
+  O('Sumo sem avisar ninguém.',0,'Sumir prejudica sua imagem e sua rede profissional.')]},
+{id:'5.3',ph:5,npc:'bia',mood:'h',ind:3,marca:'co',hab:'cm',
+ lines:[['bia','Chegou um aprendiz novo, o Davi, perdido nas primeiras semanas.']],
+ q:'Como a Lia ajuda?',
+ opts:[O('Compartilho o que aprendi, mostro os sistemas com paciência e registro a mentoria no meu portfólio.',3,'Ensinar consolida o aprendizado e gera evidência de liderança.'),
+  O('Digo que cada um que se vire.',0,'A equipe cresce quando todos se apoiam.'),
+  O('Passo as tarefas dele para ele fazer sozinho.',1,'Orientar é diferente de delegar sem apoio.')]}
+];
+const REFL={1:'Escreva um ponto forte e um ponto a desenvolver seu, com um exemplo real.',2:'Qual tendência do mundo do trabalho mais pode impactar a ocupação que você quer seguir? O que você fará a respeito?',3:'Que problema coletivo do seu bairro ou de Jataí você gostaria de enfrentar? Quem mobilizaria?',4:'Escreva sua principal meta para os próximos 6 meses: o que, até quando e qual o primeiro passo.',5:'Que atitude desta fase você levaria para o seu trabalho?'};
+const PASS=10; // de 12 pontos por fase (83%)
+
+/* ---------- Estado ---------- */
+const KEY='sim_uc11_v1';
+let st={name:'',ph:{}};
+try{const r=localStorage.getItem(KEY);if(r)st=JSON.parse(r)||st}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+const P=id=>st.ph[id]||(st.ph[id]={ans:{},done:false,attempts:0,score:0,refl:''});
+const scenes=id=>S.filter(s=>s.ph===id);
+const maxPh=id=>scenes(id).length*3;
+const passed=id=>!!(st.ph[id]&&st.ph[id].done);
+const unlocked=id=>id===1||(id<5?passed(id-1):passed(4));
+let view='capa',play=null; // play={ph,i,line,answered}
+let confirmReset=false;
+
+/* ---------- Navegação ---------- */
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{view=b.dataset.v;play=null;render()});
+function render(){
+ document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===view));
+ $('#who').textContent=st.name?('Aluno(a): '+st.name):'';
+ ({capa:rCapa,jornada:rJornada,rel:rRel})[view]();
+ window.scrollTo(0,0);
+}
+/* ---------- Capa ---------- */
+function rCapa(){
+ const sched=[['Abertura e cadastro do aluno','15 min'],['Fase 1 – Quem sou eu no trabalho?','35 min'],['Fase 2 – O mundo do trabalho está mudando','35 min'],['Intervalo','20 min'],['Fase 3 – Mobilização social em Jataí','40 min'],['Fase 4 – Meu Plano de Desenvolvimento','40 min'],['Relatório e roda de conversa final','30 min'],['Fase bônus (quem terminar antes)','20 min']];
+ $('#main').innerHTML=`
+ <section class="cover">
+  <div class="eyebrow">Senac · Aprendizagem Profissional</div>
+  <h1>Simulador - UC11: Projeto Aprendizagem – Plano de Desenvolvimento Pessoal e Profissional</h1>
+  <p class="cred">Idealizado pela instrutora Maria Angélica de Lima - Senac/Jataí-GO, desenvolvido por Claude.ai e Canva.</p>
+  <div class="start">
+   <input id="nm" type="text" placeholder="Digite seu nome" value="${esc(st.name)}" maxlength="40" aria-label="Seu nome">
+   <button class="btn" id="go">${Object.keys(st.ph).length?'Continuar jornada':'Começar jornada'}</button>
+  </div>
+  <div class="lineup">${['bia','theo','lia','tiao','rosa'].map(k=>char(k,'h')).join('')}</div>
+ </section>
+ <div class="grid3">
+  <div class="card"><h3>Você decide</h3><p>Acompanhe a história da Lia, uma jovem aprendiz, e escolha o que ela deve fazer em cada situação. Não há resposta secreta: pense como profissional.</p></div>
+  <div class="card"><h3>Fases com trava</h3><p>Cada fase tem 4 decisões e vale 12 pontos. Com ${PASS} pontos ou mais você libera a próxima. Se não alcançar, refaça com os comentários em mente.</p></div>
+  <div class="card"><h3>Relatório automático</h3><p>Na aba Relatório aparecem seus indicadores, habilidades, atitudes e valores, e o conceito final da soma das fases.</p></div>
+ </div>
+ <div class="card" style="margin-top:14px"><h3 style="font-size:20px;color:var(--blue);margin-bottom:6px">Roteiro da aula (4 horas)</h3>
+  <div class="tablewrap"><table><thead><tr><th>Etapa</th><th>Tempo</th></tr></thead><tbody>${sched.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</tbody></table></div>
+  <p class="note" style="margin-top:8px">Individual. Pode usar o computador ou o celular. Seu progresso fica salvo neste navegador.</p></div>`;
+ $('#go').onclick=()=>{const v=$('#nm').value.trim();if(!v){$('#nm').focus();$('#nm').placeholder='Escreva seu nome para começar';return}st.name=v;save();view='jornada';render()};
+}
+/* ---------- Jornada ---------- */
+function rJornada(){
+ if(!st.name){view='capa';return rCapa()}
+ if(play)return rPlay();
+ $('#main').innerHTML=`<h2>Mapa da jornada</h2><p class="note">Conclua cada fase com ${PASS} de 12 pontos para abrir a próxima.</p><div class="phases">${PH.map(p=>{
+  const d=passed(p.id),u=unlocked(p.id),pr=st.ph[p.id];
+  const cls=d?'done':u?'open':'lock';
+  const stt=d?`Concluída · ${pr.score}/${maxPh(p.id)} pts`:u?(pr&&Object.keys(pr.ans).length?'Em andamento':'Liberada · ~'+p.min+' min'):'Bloqueada';
+  return `<button class="ph ${cls} ${p.bonus?'bonus':''}" data-p="${p.id}" ${u?'':'disabled'}><span class="n">${p.bonus?'Bônus':'Fase '+p.id}</span><h3>${p.t}</h3><p>${p.d}</p><span class="st">${d?'✔ ':u?'▶ ':'🔒 '}${stt}</span></button>`}).join('')}</div>`;
+ document.querySelectorAll('.ph.open,.ph.done').forEach(b=>b.onclick=()=>{const id=+b.dataset.p;const pr=P(id);if(pr.done){play={ph:id,i:scenes(id).length,line:0,answered:false}}else{const n=scenes(id).findIndex(s=>!pr.ans[s.id]);play={ph:id,i:n<0?0:n,line:0,answered:false}}save();render()});
+}
+let order=[];
+function rPlay(){
+ const id=play.ph,list=scenes(id),pr=P(id),ph=PH.find(p=>p.id===id);
+ if(play.i>=list.length)return rResult();
+ const s=list[play.i],last=s.lines.length-1,showQ=play.line>last;
+ const ln=s.lines[Math.min(play.line,last)],speaker=ln[0];
+ const ans=pr.ans[s.id];
+ const mood=ans?(ans.p>=2?'h':'w'):s.mood;
+ const npcMood=ans?(ans.p>=2?'h':'w'):(showQ?s.mood:(speaker==='lia'?'n':s.mood));
+ const bar=Math.round(play.i/list.length*100);
+ $('#main').innerHTML=`
+ <div class="top"><div class="t">${esc(ph.t)}</div><div class="bar" aria-hidden="true"><i style="width:${bar}%"></i></div><span class="note">Decisão ${play.i+1} de ${list.length}</span></div>
+ <div class="stage" aria-label="Cena">${BD[id]}<div class="place">${esc(ph.place)}</div>
+  <div class="c l ${speaker==='lia'&&!showQ?'talk':''}">${char('lia',ans?mood:(speaker==='lia'?'n':'n'))}</div>
+  <div class="c r ${speaker!=='lia'&&!showQ?'talk':''}">${char(s.npc,npcMood)}</div></div>
+ <div class="cap" role="status"><div class="tx"><b>${esc(CH[showQ?s.lines[last][0]:speaker].n)}:</b> ${esc(showQ?s.lines[last][1]:ln[1])}</div>${showQ?'':`<button id="nx">${play.line<last?'Próxima fala ▶':'Decidir ▶'}</button>`}</div>
+ <div class="q" ${showQ?'':'hidden'}><h3>${esc(s.q)}</h3><div class="opts" id="opts"></div><div id="fb"></div></div>`;
+ if(!showQ)$('#nx').onclick=()=>{play.line++;rPlay()};
+ else{
+  if(!order[s.id])order[s.id]=s.opts.map((o,i)=>i).sort(()=>Math.random()-.5);
+  $('#opts').innerHTML=order[s.id].map(i=>{const o=s.opts[i];const sel=ans&&ans.o===i;return `<button class="opt ${sel?'sel'+o.p:''}" data-o="${i}" ${ans?'disabled':''}>${esc(o.t)}</button>`}).join('');
+  if(ans){const o=s.opts[ans.o],g=o.p>=2;
+   $('#fb').innerHTML=`<div class="fb ${g?'g':'b'}"><span class="pts">${g?'Boa decisão!':'Vale repensar.'} +${o.p} ponto${o.p===1?'':'s'}</span>${esc(o.f)}</div><div class="row"><button class="btn" id="cn">${play.i+1<list.length?'Próxima situação ▶':'Ver resultado da fase ▶'}</button></div>`;
+   $('#cn').onclick=()=>{play.i++;play.line=0;rPlay()}}
+  document.querySelectorAll('.opt:not(:disabled)').forEach(b=>b.onclick=()=>{const i=+b.dataset.o;pr.ans[s.id]={o:i,p:s.opts[i].p};save();rPlay()});
+ }
+ window.scrollTo({top:0});
+}
+function rResult(){
+ const id=play.ph,list=scenes(id),pr=P(id),ph=PH.find(p=>p.id===id);
+ const sc=list.reduce((a,s)=>a+(pr.ans[s.id]?pr.ans[s.id].p:0),0),mx=maxPh(id),ok=sc>=PASS||(id===5&&sc>=7);
+ const need=id===5?7:PASS;
+ if(!pr.done&&!pr.counted){pr.attempts++;pr.counted=true}
+ if(ok){pr.done=true;pr.score=sc}
+ save();
+ const next=id<4?PH.find(p=>p.id===id+1):null;
+ $('#main').innerHTML=`<div class="card">
+  <div class="note">${esc(ph.t)}</div>
+  <div class="score">${sc}<span style="font-size:26px;color:var(--muted)"> / ${mx}</span></div>
+  <p style="font-weight:800;margin:6px 0">${ok?(id===5?'Você conquistou o Selo Aprendiz Destaque!':'Fase concluída! A próxima fase foi liberada.'):`Faltam ${need-sc} ponto(s) para liberar a próxima fase.`}</p>
+  ${list.map(s=>{const a=pr.ans[s.id];return `<div class="fb ${a&&a.p>=2?'g':'b'}" style="margin-top:8px"><b>${esc(s.id)} · ${esc(s.q)}</b><br>${a?esc(s.opts[a.o].f):''} <b>(+${a?a.p:0})</b></div>`}).join('')}
+  ${ok?`<div class="sec" style="margin-top:16px"><h3 style="font-size:20px;margin-bottom:6px">Reflexão</h3><p style="margin:0 0 8px">${esc(REFL[id])}</p><textarea id="rf" placeholder="Escreva aqui. Sua resposta aparece no relatório.">${esc(pr.refl)}</textarea></div>`:''}
+  <div class="row">${ok?`<button class="btn" id="nxp">${next?'Ir para a próxima fase ▶':'Ver meu relatório ▶'}</button>`:`<button class="btn" id="rt">Tentar novamente</button>`}<button class="btn ghost" id="mp">Voltar ao mapa</button></div></div>`;
+ if(ok)$('#rf').oninput=e=>{pr.refl=e.target.value;save()};
+ const back=()=>{play=null;render()};
+ $('#mp').onclick=back;
+ if(ok)$('#nxp').onclick=()=>{if(next&&unlocked(next.id)){const n=scenes(next.id).findIndex(s=>!P(next.id).ans[s.id]);play={ph:next.id,i:n<0?0:n,line:0,answered:false};render()}else{view=next?'jornada':'rel';play=null;render()}};
+ else $('#rt').onclick=()=>{list.forEach(s=>{delete pr.ans[s.id];delete order[s.id]});pr.counted=false;save();play={ph:id,i:0,line:0,answered:false};render()};
+}
+/* ---------- Relatório ---------- */
+function lvl(p){return p>=90?'Protagonista':p>=75?'Consolidado':p>=60?'Em consolidação':'Em desenvolvimento'}
+function calc(){
+ const A={ind:{},marca:{},hab:{}};let tot=0,mx=0,done=0;
+ [1,2,3,4].forEach(id=>{if(!passed(id))return;done++;scenes(id).forEach(s=>{const a=st.ph[id].ans[s.id];if(!a)return;
+  [['ind',s.ind],['marca',s.marca],['hab',s.hab]].forEach(([k,v])=>{const o=A[k][v]||(A[k][v]={e:0,m:0});o.e+=a.p;o.m+=3});tot+=a.p;mx+=3})});
+ return {A,tot,mx,done};
+}
+function rRel(){
+ if(!st.name){view='capa';return rCapa()}
+ const {A,tot,mx,done}=calc(),pct=mx?Math.round(tot/mx*100):0;
+ const row=(name,o)=>{const p=o?Math.round(o.e/o.m*100):null;return `<div class="m"><div class="nm">${esc(name)}</div><div class="lv">${p==null?'—':lvl(p)+' · '+p+'%'}</div><div class="bar" role="img" aria-label="${esc(name)}: ${p==null?'sem dados':p+'%'}"><i style="width:${p||0}%"></i></div></div>`};
+ const mArr=Object.entries(A.marca).map(([k,o])=>[k,o.e/o.m]).sort((a,b)=>b[1]-a[1]);
+ const b5=P(5),bonus=b5.done?b5.score:null;
+ const parecer=done?`${esc(st.name)} concluiu ${done} de 4 fases e obteve ${tot} de ${mx} pontos (${pct}%). `+(mArr.length?`O ponto mais forte foi “${MARCA[mArr[0][0]]}”${mArr.length>1&&mArr[mArr.length-1][1]<mArr[0][1]?`, e a atitude que mais precisa de atenção é “${MARCA[mArr[mArr.length-1][0]]}”`:''}. `:'')+(done<4?'O conceito é parcial e será atualizado quando as demais fases forem concluídas.':'Conceito final calculado a partir da soma das quatro fases.'):'Conclua a Fase 1 para gerar o relatório.';
+ const txt=()=>{
+  const L=[`RELATÓRIO – Simulador UC11: Projeto Aprendizagem – Plano de Desenvolvimento Pessoal e Profissional`,`Aluno(a): ${st.name}`,`Conceito: ${done?lvl(pct)+' ('+pct+'%)':'—'} · Fases concluídas: ${done}/4`,'','INDICADORES'];
+  [1,2,3].forEach(i=>{const o=A.ind[i];L.push(`${i}. ${IND[i]} – ${o?Math.round(o.e/o.m*100)+'%':'—'}`)});
+  L.push('','HABILIDADES');Object.keys(HAB).forEach(k=>{const o=A.hab[k];L.push(`${HAB[k]} – ${o?Math.round(o.e/o.m*100)+'%':'—'}`)});
+  L.push('','ATITUDES E VALORES (Marcas Formativas)');Object.keys(MARCA).forEach(k=>{const o=A.marca[k];L.push(`${MARCA[k]} – ${o?Math.round(o.e/o.m*100)+'%':'—'}`)});
+  [1,2,3,4,5].forEach(id=>{if(P(id).refl)L.push('',`Reflexão fase ${id}: ${P(id).refl}`)});return L.join('\n')};
+ $('#main').innerHTML=`<div class="card rep"><h2>Relatório de desempenho</h2><p class="note">${esc(st.name)} · gerado automaticamente a partir das suas decisões</p>
+  <div class="concept sec"><div><div class="note">Conceito pela soma das fases</div><div class="big">${done?lvl(pct):'—'}</div></div><div style="flex:1 1 220px;min-width:0"><div class="score" style="font-size:42px">${pct}%</div><div class="bar big"><i style="width:${pct}%"></i></div></div></div>
+  <p style="margin:12px 0 0">${parecer}</p>
+  <p class="note">Escala: Protagonista (90% ou mais) · Consolidado (75 a 89%) · Em consolidação (60 a 74%) · Em desenvolvimento (abaixo de 60%).</p>
+  <div class="sec"><h3>Fases</h3><div class="tablewrap"><table><thead><tr><th>Fase</th><th>Pontos</th><th>Tentativas</th></tr></thead><tbody>${PH.map(p=>{const r=st.ph[p.id];return `<tr><td>${p.bonus?'Bônus – ':p.id+' – '}${esc(p.t)}</td><td>${r&&r.done?r.score+'/'+maxPh(p.id):'—'}</td><td>${r&&r.attempts?r.attempts:'—'}</td></tr>`}).join('')}</tbody></table></div>${bonus!=null&&bonus>=7?'<p><span class="pill">★ Selo Aprendiz Destaque (fase bônus)</span></p>':''}</div>
+  <div class="sec"><h3>Indicadores de avaliação do Projeto Aprendizagem</h3>${[1,2,3].map(i=>row(i+'. '+IND[i],A.ind[i])).join('')}</div>
+  <div class="sec"><h3>Habilidades desenvolvidas</h3>${Object.keys(HAB).map(k=>row(HAB[k],A.hab[k])).join('')}</div>
+  <div class="sec"><h3>Atitudes e valores (Marcas Formativas Senac)</h3>${Object.keys(MARCA).map(k=>row(MARCA[k],A.marca[k])).join('')}</div>
+  <div class="sec"><h3>Minhas reflexões</h3>${[1,2,3,4,5].map(id=>P(id).refl?`<div class="note">Fase ${id}</div><div class="refl">${esc(P(id).refl)}</div>`:'').join('')||'<p class="note">As reflexões escritas ao final de cada fase aparecem aqui.</p>'}</div>
+  <div class="row"><button class="btn" id="cp">Copiar relatório</button><button class="btn ghost" id="rs">Novo aluno / reiniciar</button></div><p class="note" id="msg" role="status"></p></div>`;
+ $('#cp').onclick=()=>{const t=txt();const ok=()=>$('#msg').textContent='Relatório copiado. Cole em um documento ou envie à instrutora.';const fb=()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok()}catch(e){$('#msg').textContent='Não foi possível copiar. Tire uma captura de tela do relatório.'}ta.remove()};
+  try{navigator.clipboard.writeText(t).then(ok,fb)}catch(e){fb()}};
+ $('#rs').onclick=()=>{if(!confirmReset){confirmReset=true;$('#rs').textContent='Toque de novo para apagar tudo';return}confirmReset=false;st={name:'',ph:{}};order=[];save();view='capa';render()};
+}
+render();
+</script>
+
+</body>
+</html>
